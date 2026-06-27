@@ -13,28 +13,40 @@ export default function ResetPasswordPage() {
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    // Supabase manda il token come hash nell'URL (#access_token=...&type=recovery)
-    // Dobbiamo estrarlo e impostare la sessione manualmente
-    const hash = window.location.hash
-    if (hash) {
-      const params = new URLSearchParams(hash.substring(1))
-      const accessToken = params.get('access_token')
-      const refreshToken = params.get('refresh_token')
+    async function init() {
+      // Nuovo formato: ?code=...
+      const params = new URLSearchParams(window.location.search)
+      const code = params.get('code')
 
-      if (accessToken && refreshToken) {
-        supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        }).then(({ error }) => {
+      if (code) {
+        const { error } = await supabase.auth.exchangeCodeForSession(code)
+        if (error) setError('Link non valido o scaduto')
+        else setReady(true)
+        return
+      }
+
+      // Vecchio formato: #access_token=...
+      const hash = window.location.hash
+      if (hash) {
+        const hashParams = new URLSearchParams(hash.substring(1))
+        const accessToken = hashParams.get('access_token')
+        const refreshToken = hashParams.get('refresh_token')
+
+        if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          })
           if (error) setError('Link non valido o scaduto')
           else setReady(true)
-        })
-      } else {
-        setError('Link non valido o scaduto')
+          return
+        }
       }
-    } else {
+
       setError('Link non valido o scaduto')
     }
+
+    init()
   }, [])
 
   async function handleReset() {
@@ -73,7 +85,7 @@ export default function ResetPasswordPage() {
       )}
 
       {error && (
-        <p className="text-red-500 text-sm text-center">{error}</p>
+        <p className="text-red-500 text-sm text-center mb-4">{error}</p>
       )}
 
       {ready && (
