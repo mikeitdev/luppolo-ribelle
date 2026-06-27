@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 
@@ -10,6 +10,32 @@ export default function ResetPasswordPage() {
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    // Supabase manda il token come hash nell'URL (#access_token=...&type=recovery)
+    // Dobbiamo estrarlo e impostare la sessione manualmente
+    const hash = window.location.hash
+    if (hash) {
+      const params = new URLSearchParams(hash.substring(1))
+      const accessToken = params.get('access_token')
+      const refreshToken = params.get('refresh_token')
+
+      if (accessToken && refreshToken) {
+        supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        }).then(({ error }) => {
+          if (error) setError('Link non valido o scaduto')
+          else setReady(true)
+        })
+      } else {
+        setError('Link non valido o scaduto')
+      }
+    } else {
+      setError('Link non valido o scaduto')
+    }
+  }, [])
 
   async function handleReset() {
     setError(null)
@@ -28,8 +54,9 @@ export default function ResetPasswordPage() {
 
     const { error } = await supabase.auth.updateUser({ password })
 
-    if (error) setError(error.message)
-    else {
+    if (error) {
+      setError(error.message)
+    } else {
       await supabase.auth.signOut()
       router.push('/login')
     }
@@ -41,32 +68,42 @@ export default function ResetPasswordPage() {
     <main className="max-w-sm mx-auto px-4 py-16">
       <h1 className="text-2xl font-bold text-center mb-8">Nuova password</h1>
 
-      <div className="flex flex-col gap-4">
-        <input
-          type="password"
-          placeholder="Nuova password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          className="border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-amber-400"
-        />
-        <input
-          type="password"
-          placeholder="Conferma password"
-          value={confirm}
-          onChange={e => setConfirm(e.target.value)}
-          className="border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-amber-400"
-        />
+      {!ready && !error && (
+        <p className="text-center text-gray-400">Verifica in corso...</p>
+      )}
 
-        {error && <p className="text-red-500 text-sm">{error}</p>}
+      {error && (
+        <p className="text-red-500 text-sm text-center">{error}</p>
+      )}
 
-        <button
-          onClick={handleReset}
-          disabled={loading}
-          className="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 rounded-lg disabled:opacity-50"
-        >
-          {loading ? 'Salvataggio...' : 'Aggiorna password'}
-        </button>
-      </div>
+      {ready && (
+        <div className="flex flex-col gap-4">
+          <input
+            type="password"
+            placeholder="Nuova password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            className="border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-amber-400"
+          />
+          <input
+            type="password"
+            placeholder="Conferma password"
+            value={confirm}
+            onChange={e => setConfirm(e.target.value)}
+            className="border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-amber-400"
+          />
+
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+
+          <button
+            onClick={handleReset}
+            disabled={loading}
+            className="bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 rounded-lg disabled:opacity-50"
+          >
+            {loading ? 'Salvataggio...' : 'Aggiorna password'}
+          </button>
+        </div>
+      )}
     </main>
   )
 }
