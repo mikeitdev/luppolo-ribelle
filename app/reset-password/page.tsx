@@ -14,24 +14,36 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     async function init() {
-      const params = new URLSearchParams(window.location.search)
-      const code = params.get('code')
+      console.log('URL completo:', window.location.href)
+      console.log('Hash:', window.location.hash)
+      console.log('Search:', window.location.search)
 
-      console.log('code:', code)
+      // Formato implicit: #access_token=...&type=recovery
+      const hash = window.location.hash
+      if (hash) {
+        const hashParams = new URLSearchParams(hash.substring(1))
+        const accessToken = hashParams.get('access_token')
+        const refreshToken = hashParams.get('refresh_token')
+        const type = hashParams.get('type')
 
-      if (!code) {
-        setError('Link non valido o scaduto')
-        return
+        console.log('type:', type, 'accessToken:', accessToken)
+
+        if (type === 'recovery' && accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          })
+          if (error) {
+            console.error('Errore setSession:', JSON.stringify(error))
+            setError('Link non valido o scaduto')
+          } else {
+            setReady(true)
+          }
+          return
+        }
       }
 
-      const { error } = await supabase.auth.exchangeCodeForSession(code)
-      console.error('Errore exchange:', JSON.stringify(error))
-
-      if (error) {
-        setError('Link non valido o scaduto')
-      } else {
-        setReady(true)
-      }
+      setError('Link non valido o scaduto')
     }
 
     init()
