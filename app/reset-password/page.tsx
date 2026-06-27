@@ -12,43 +12,26 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [ready, setReady] = useState(false)
 
-useEffect(() => {
-  async function init() {
-    console.log('URL completo:', window.location.href)
-    console.log('Search:', window.location.search)
-    console.log('Hash:', window.location.hash)
-
-
-      // Nuovo formato: ?code=...
+  useEffect(() => {
+    async function init() {
       const params = new URLSearchParams(window.location.search)
       const code = params.get('code')
 
-      if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
-        if (error) setError('Link non valido o scaduto')
-        else setReady(true)
+      console.log('code:', code)
+
+      if (!code) {
+        setError('Link non valido o scaduto')
         return
       }
 
-      // Vecchio formato: #access_token=...
-      const hash = window.location.hash
-      if (hash) {
-        const hashParams = new URLSearchParams(hash.substring(1))
-        const accessToken = hashParams.get('access_token')
-        const refreshToken = hashParams.get('refresh_token')
+      const { error } = await supabase.auth.exchangeCodeForSession(code)
+      console.error('Errore exchange:', JSON.stringify(error))
 
-        if (accessToken && refreshToken) {
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          })
-          if (error) setError('Link non valido o scaduto')
-          else setReady(true)
-          return
-        }
+      if (error) {
+        setError('Link non valido o scaduto')
+      } else {
+        setReady(true)
       }
-
-      setError('Link non valido o scaduto')
     }
 
     init()
@@ -109,8 +92,6 @@ useEffect(() => {
             onChange={e => setConfirm(e.target.value)}
             className="border rounded-lg px-4 py-2 outline-none focus:ring-2 focus:ring-amber-400"
           />
-
-          {error && <p className="text-red-500 text-sm">{error}</p>}
 
           <button
             onClick={handleReset}
