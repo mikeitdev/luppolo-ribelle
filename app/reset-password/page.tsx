@@ -13,28 +13,15 @@ export default function ResetPasswordPage() {
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    async function init() {
-      const params = new URLSearchParams(window.location.search)
-      const code = params.get('code')
-
-      console.log('code:', code)
-
-      if (!code) {
-        setError('Link non valido o scaduto')
-        return
-      }
-
-      const { error } = await supabase.auth.exchangeCodeForSession(code)
-      console.log('Errore exchange:', JSON.stringify(error))
-
-      if (error) {
-        setError('Link non valido o scaduto')
-      } else {
+    // detectSessionInUrl gestisce automaticamente il code nell'URL
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth event:', event, 'session:', !!session)
+      if (event === 'PASSWORD_RECOVERY') {
         setReady(true)
       }
-    }
+    })
 
-    init()
+    return () => listener.subscription.unsubscribe()
   }, [])
 
   async function handleReset() {
