@@ -12,8 +12,13 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false)
   const [ready, setReady] = useState(false)
 
-  useEffect(() => {
-    async function init() {
+useEffect(() => {
+  async function init() {
+    console.log('URL completo:', window.location.href)
+    console.log('Search:', window.location.search)
+    console.log('Hash:', window.location.hash)
+
+
       // Nuovo formato: ?code=...
       const params = new URLSearchParams(window.location.search)
       const code = params.get('code')
